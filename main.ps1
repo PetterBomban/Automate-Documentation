@@ -17,33 +17,31 @@ Function Get-ServerData
             Mandatory = $true,
             ValueFromPipeline = $true
         )]
-        $servers
+        $Servers
     )
 
     begin
     {
         ## Temporary
-        $cred = Get-Credential
+        $Cred = Get-Credential -Credential "Petter"
 
         ## List to contain jobs
         $JobList = @()
 
         ## Scriptblock that runs for each server passed to this function
         $GatherData = {
-            param($computer, $cred)
+            param($computer, $Cred)
 
-            Invoke-Command -ComputerName $computer -Credential $cred -ScriptBlock {
+            Invoke-Command -ComputerName $computer -Credential $Cred -ScriptBlock {
 
                 ## Need some sort of system to decide what to run on the server...
                 $property = [ordered]@{
                     Server = (hostname)
-                    IPAddress = (Get-NetIPConfiguration).IPv4Address.IPAddress
+                    IPAddress = (Get-NetIPConfiguration).IPv4Address.IPAddress 
                     OS = ((Get-WmiObject Win32_OperatingSystem).Caption)
                     #Installed = (Get-WindowsFeature | Where {$_.Installed -eq $true})
                     #Services = (Get-Service | Where {$_.Status -eq "Running"})
-                    #ComputerSystem = (Get-WmiObject -Class Win32_ComputerSystem)
                 }
-
                 New-Object psobject -Property $property
             }
         }
@@ -51,18 +49,18 @@ Function Get-ServerData
 
     process
     {
-        foreach ($server in $servers)
+        foreach ($Server in $Servers)
         {
             ## Generate a unique job name, start it and add the name to the list
-            $id = "$server - $([System.Guid]::NewGuid())"
-            Start-Job -Name $id -ScriptBlock $GatherData -ArgumentList $server, $cred | Out-Null
+            $id = "$Server - $([System.Guid]::NewGuid())"
+            Start-Job -Name $id -ScriptBlock $GatherData -ArgumentList $Server, $Cred | Out-Null
             $JobList += $id
         }
 
         ## Wait for jobs to finish
         while (Get-Job -State Running)
         {
-            Start-Sleep 5
+            Start-Sleep 1
         }
 
         ## Receive jobs
@@ -84,4 +82,4 @@ Function Get-ServerData
 
 }
 
-"Neo", "Mouse" | Get-ServerData
+"Neo", "Mouse", "Sentinel" | Get-ServerData
