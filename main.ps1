@@ -1,4 +1,13 @@
-﻿## Function for gather data from servers
+﻿<#
+.Synopsis
+   Gather data about one or more servers
+.DESCRIPTION
+   Gather data about one or more servers. In development.
+.EXAMPLE
+   "Neo", "Mouse" | Get-ServerData
+.EXAMPLE
+   Get-ServerData -servers "Neo", "Mouse"
+#>
 Function Get-ServerData 
 {
     [CmdletBinding()]
@@ -26,10 +35,15 @@ Function Get-ServerData
             Invoke-Command -ComputerName $computer -Credential $cred -ScriptBlock {
 
                 ## Need some sort of system to decide what to run on the server...
-                $property = @{
+                $property = [ordered]@{
                     Server = (hostname)
                     IPAddress = (Get-NetIPConfiguration).IPv4Address.IPAddress
+                    OS = ((Get-WmiObject Win32_OperatingSystem).Caption)
+                    #Installed = (Get-WindowsFeature | Where {$_.Installed -eq $true})
+                    #Services = (Get-Service | Where {$_.Status -eq "Running"})
+                    #ComputerSystem = (Get-WmiObject -Class Win32_ComputerSystem)
                 }
+
                 New-Object psobject -Property $property
             }
         }
@@ -64,7 +78,8 @@ Function Get-ServerData
     end
     {
         ## Clear the queue
-        Remove-Job *
+        Remove-Job * -Force
+        $JobList = $null
     }
 
 }
