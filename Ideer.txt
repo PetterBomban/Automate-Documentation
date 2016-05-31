@@ -1,0 +1,13 @@
+Hente data fra Windows Servere, legge inn i database (SQLite?)
+
+ - Scanning av servere eller manuell innlegging.?
+ - Hvor skalerbart er SQLite? evt. støtte for flere databaser
+ - Metode for å hente data (Invoke-Command? WMI queries?)
+ - Metode for scanning? Intervall-basert? click-to-scan?
+
+Presentere data via webside
+
+ - Stack. Node? PHP? ASP?
+ - Kommunikasjon mellom web og powershell?
+ - 
+
