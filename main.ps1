@@ -30,12 +30,15 @@ Function Get-ServerData
         $DBTable
     )
 
+    $ErrorActionPreference = "Stop"
+
     ## Modules needed
     Import-Module ActiveDirectory, PSSQLite
 
     ## Temporary
     $Cred = Get-Credential -Credential "PETTERR\SuperAdmin"
 
+    ## Create the database if it doesn't exist already
     if (!( Test-Path -Path $Database ))
     {
         $q = "CREATE TABLE SERVERS (_id INTEGER PRIMARY KEY autoincrement, GUID TEXT, Hostname TEXT, IPAddress TEXT, OS TEXT)"
@@ -58,14 +61,18 @@ Function Get-ServerData
 
     foreach ($Server in $Servers)
     {
+        ## Run $GatherData on the server, passes the output to $data
         Invoke-Command -ComputerName $Server -Credential $Cred -ScriptBlock $GatherData -OutVariable data | Out-Null
 
+        ## Adds the server GUID to the $data object
         $GUID = (Get-ADComputer $Server).ObjectGUID.Guid
-
         $data | Add-Member -NotePropertyName GUID -NotePropertyValue $GUID
 
+        ## Begin adding the server to the database
         try
         {
+            ## Checks to see if the server is already entered.
+            ## If it is, we just update the already existing entry. If not, we add a new one.
             $sql = Invoke-SqliteQuery -Query "SELECT GUID FROM SERVERS" -DataSource $Database
             if ( $sql.GUID -eq $data.GUID )
             {
