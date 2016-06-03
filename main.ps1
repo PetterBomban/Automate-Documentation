@@ -17,69 +17,92 @@ Function Get-ServerData
             Mandatory = $true,
             ValueFromPipeline = $true
         )]
-        $Servers
+        [string[]]$Servers,
+
+        [Parameter(
+            Mandatory = $true
+        )]
+        $Database,
+
+        [Parameter(
+            Mandatory = $true
+        )]
+        $DBTable
     )
 
-    begin
+    ## Modules needed
+    Import-Module ActiveDirectory, PSSQLite
+
+    ## Temporary
+    $Cred = Get-Credential -Credential "PETTERR\SuperAdmin"
+
+    if (!( Test-Path -Path $Database ))
     {
-        ## Temporary
-        $Cred = Get-Credential -Credential "Petter"
+        $q = "CREATE TABLE SERVERS (_id INTEGER PRIMARY KEY autoincrement, GUID TEXT, Hostname TEXT, IPAddress TEXT, OS TEXT)"
+        Invoke-SqliteQuery -DataSource $Database -Query $q
 
-        ## List to contain jobs
-        $JobList = @()
+        Write-Output "Database $Database created."
+    }
 
-        ## Scriptblock that runs for each server passed to this function
-        $GatherData = {
-            param($computer, $Cred)
+    ## Scriptblock that runs for each server passed to this function
+    $GatherData = {
+        $property = [ordered]@{
+            Hostname = (hostname)
+            IPAddress = (Get-NetIPConfiguration).IPv4Address.IPAddress 
+            OS = ((Get-WmiObject Win32_OperatingSystem).Caption)
+            #Installed = (Get-WindowsFeature | Where {$_.Installed -eq $true})
+            #Services = (Get-Service | Where {$_.Status -eq "Running"})
+        }
+        New-Object psobject -Property $property
+    }
 
-            Invoke-Command -ComputerName $computer -Credential $Cred -ScriptBlock {
+    foreach ($Server in $Servers)
+    {
+        Invoke-Command -ComputerName $Server -Credential $Cred -ScriptBlock $GatherData -OutVariable data | Out-Null
 
-                ## Need some sort of system to decide what to run on the server...
-                $property = [ordered]@{
-                    Server = (hostname)
-                    IPAddress = (Get-NetIPConfiguration).IPv4Address.IPAddress 
-                    OS = ((Get-WmiObject Win32_OperatingSystem).Caption)
-                    #Installed = (Get-WindowsFeature | Where {$_.Installed -eq $true})
-                    #Services = (Get-Service | Where {$_.Status -eq "Running"})
-                }
-                New-Object psobject -Property $property
+        $GUID = (Get-ADComputer $Server).ObjectGUID.Guid
+
+        $data | Add-Member -NotePropertyName GUID -NotePropertyValue $GUID
+
+        try
+        {
+            $sql = Invoke-SqliteQuery -Query "SELECT GUID FROM SERVERS" -DataSource $Database
+            if ( $sql.GUID -eq $data.GUID )
+            {
+                Write-Output "Detected already existing server, updating with new info. $Server"
+
+                $Query = "UPDATE $DBTable (GUID, Hostname, IPAddress, OS) VALUES (@GUID, @Hostname, @IPAddress, @OS)"
+                Invoke-SqliteQuery -DataSource $Database -Query $Query -SqlParameters @{
+                    GUID = $data.GUID
+                    Hostname = $data.Hostname
+                    IPAddress = $data.IPAddress
+                    OS = $data.OS
+                } -ErrorAction Stop
+            }
+            else 
+            {
+                $Query = "INSERT INTO $DBTable (GUID, Hostname, IPAddress, OS) VALUES (@GUID, @Hostname, @IPAddress, @OS)"
+                Invoke-SqliteQuery -DataSource $Database -Query $Query -SqlParameters @{
+                    GUID = $data.GUID
+                    Hostname = $data.Hostname
+                    IPAddress = $data.IPAddress
+                    OS = $data.OS
+                } -ErrorAction Stop
             }
         }
-    }
-
-    process
-    {
-        foreach ($Server in $Servers)
+        catch 
         {
-            ## Generate a unique job name, start it and add the name to the list
-            $id = "$Server - $([System.Guid]::NewGuid())"
-            Start-Job -Name $id -ScriptBlock $GatherData -ArgumentList $Server, $Cred | Out-Null
-            $JobList += $id
+            ## TODO
+            Write-Error $Error[0]
         }
 
-        ## Wait for jobs to finish
-        while (Get-Job -State Running)
-        {
-            Start-Sleep 1
-        }
-
-        ## Receive jobs
-        foreach ($Job in $JobList)
-        {
-            ## Testing
-            Receive-Job -Name $Job -OutVariable data | Out-Null
-
-            Write-Output $data
-        }
     }
 
-    end
-    {
-        ## Clear the queue
-        Remove-Job * -Force
-        $JobList = $null
-    }
+    ## DEBUG
+    Invoke-SqliteQuery -DataSource $Database -Query "SELECT * FROM SERVERS"
+
+    #Invoke-SqliteQuery -DataSource $Database -Query "DELETE FROM SERVERS"
 
 }
 
-"Neo", "Mouse", "Sentinel" | Get-ServerData
+Get-ServerData -Database "C:\Users\SuperAdmin\SERVERS.SQLite" -DBTable "SERVERS" -Servers "MgmrSrv", "DC001"
