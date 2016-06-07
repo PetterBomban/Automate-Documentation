@@ -27,7 +27,15 @@ Function Get-ServerData
         [Parameter(
             Mandatory = $true
         )]
-        $DBTable
+        $DBTable,
+
+        [Parameter(
+            Mandatory = $true
+        )]
+        $Credentials,
+
+        [Parameter()]
+        [switch]$AllowDuplicates
     )
 
     $ErrorActionPreference = "Stop"
@@ -35,13 +43,10 @@ Function Get-ServerData
     ## Modules needed
     Import-Module ActiveDirectory, PSSQLite
 
-    ## Temporary
-    $Cred = Get-Credential -Credential "PETTERR\SuperAdmin"
-
     ## Create the database if it doesn't exist already
     if (!( Test-Path -Path $Database ))
     {
-        $q = "CREATE TABLE $DBTable (_id INTEGER PRIMARY KEY autoincrement, GUID TEXT, Hostname TEXT, IPAddress TEXT, OS TEXT, Date TEXT)"
+        $q = "CREATE TABLE $DBTable (_id INTEGER PRIMARY KEY autoincrement, GUID TEXT, Hostname TEXT, IPAddress TEXT, OS TEXT, Date TEXT, Comments TEXT)"
         Invoke-SqliteQuery -DataSource $Database -Query $q
 
         Write-Output "Database $Database created."
@@ -53,6 +58,7 @@ Function Get-ServerData
             Hostname = (hostname)
             IPAddress = (Get-NetIPConfiguration).IPv4Address.IPAddress 
             OS = ((Get-WmiObject Win32_OperatingSystem).Caption)
+            Date = (Get-date -Format d)
             #Installed = (Get-WindowsFeature | Where {$_.Installed -eq $true})
             #Services = (Get-Service | Where {$_.Status -eq "Running"})
         }
@@ -61,41 +67,58 @@ Function Get-ServerData
 
     foreach ($Server in $Servers)
     {
+        Write-Output "Gathering data from $Server."
         ## Run $GatherData on the server, passes the output to $data
-        Invoke-Command -ComputerName $Server -Credential $Cred -ScriptBlock $GatherData -OutVariable data | Out-Null
+        Invoke-Command -ComputerName $Server -Credential $Credentials -ScriptBlock $GatherData -OutVariable data | Out-Null
 
-        ## Adds the server GUID to the $data object
-        $GUID = (Get-ADComputer $Server).ObjectGUID.Guid
-        $data | Add-Member -NotePropertyName GUID -NotePropertyValue $GUID
+        try 
+        {
+            ## Adds the server GUID to the $data object
+            $GUID = (Get-ADComputer $Server).ObjectGUID.Guid
+            $data | Add-Member -NotePropertyName GUID -NotePropertyValue $GUID
+        }
+        catch 
+        {
+            ## TODO
+            Write-Error $Error[0]
+        }
 
         ## Begin adding the server to the database
         try
         {
             ## Checks to see if the server is already entered.
             ## If it is, we just update the already existing entry. If not, we add a new one.
-            $sql = Invoke-SqliteQuery -Query "SELECT * FROM SERVERS WHERE Hostname = '$Server'" -DataSource $Database
-            if ( $sql.GUID -eq $data.GUID ) #$sql.GUID -eq $data.GUID
+            $sql = Invoke-SqliteQuery -DataSource $Database -Query "SELECT * FROM SERVERS WHERE Hostname = '$Server'"
+            if ( ($sql.GUID -eq $data.GUID) -and ($AllowDuplicates -eq $false) )
             {
-                Write-Output "Detected already existing server, updating with new info. $Server"
+                Write-Output "Detected already existing server, updating with new info. $Server."
 
-                $Query = "UPDATE $DBTable SET GUID=@GUID, Hostname=@Hostname, IPAddress=@IPAddress, OS=@OS WHERE _id=@id"
+                $Query = "UPDATE $DBTable SET GUID=@GUID, Hostname=@Hostname, IPAddress=@IPAddress, OS=@OS, Date=@Date WHERE _id=@id"
                 Invoke-SqliteQuery -DataSource $Database -Query $Query -SqlParameters @{
                     GUID = $data.GUID
                     Hostname = $data.Hostname
                     IPAddress = $data.IPAddress
                     OS = $data.OS
                     id = $sql._id
+                    Date = $data.Date
                 } -ErrorAction Stop
+
+                Write-Output "$Server -- Updated entry."
             }
             else 
             {
-                $Query = "INSERT INTO $DBTable (GUID, Hostname, IPAddress, OS) VALUES (@GUID, @Hostname, @IPAddress, @OS)"
+                Write-Output "Creating new entry for $Server."
+
+                $Query = "INSERT INTO $DBTable (GUID, Hostname, IPAddress, OS, Date) VALUES (@GUID, @Hostname, @IPAddress, @OS, @Date)"
                 Invoke-SqliteQuery -DataSource $Database -Query $Query -SqlParameters @{
                     GUID = $data.GUID
                     Hostname = $data.Hostname
                     IPAddress = $data.IPAddress
                     OS = $data.OS
+                    Date = $data.Date
                 } -ErrorAction Stop
+
+                Write-Output "$Server -- Created entry."
             }
         }
         catch 
@@ -113,4 +136,6 @@ Function Get-ServerData
 
 }
 
-Get-ServerData -Database "C:\Users\SuperAdmin\SERVERS.SQLite" -DBTable "SERVERS" -Servers "MgmrSrv", "DC001"
+$cred = Get-Credential -Credential "PETTERR\SuperAdmin"
+
+Get-ServerData -Database "C:\Users\SuperAdmin\SERVERS.SQLite" -DBTable "SERVERS" -Servers "MgmrSrv", "DC001" -Credentials $cred
