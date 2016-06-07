@@ -30,7 +30,7 @@ Function Get-ServerData
         $DBTable
     )
 
-    #$ErrorActionPreference = "Stop"
+    $ErrorActionPreference = "Stop"
 
     ## Modules needed
     Import-Module ActiveDirectory, PSSQLite
@@ -41,7 +41,7 @@ Function Get-ServerData
     ## Create the database if it doesn't exist already
     if (!( Test-Path -Path $Database ))
     {
-        $q = "CREATE TABLE $DBTable (_id INTEGER PRIMARY KEY autoincrement, GUID TEXT, Hostname TEXT, IPAddress TEXT, OS TEXT)"
+        $q = "CREATE TABLE $DBTable (_id INTEGER PRIMARY KEY autoincrement, GUID TEXT, Hostname TEXT, IPAddress TEXT, OS TEXT, Date TEXT)"
         Invoke-SqliteQuery -DataSource $Database -Query $q
 
         Write-Output "Database $Database created."
@@ -73,9 +73,8 @@ Function Get-ServerData
         {
             ## Checks to see if the server is already entered.
             ## If it is, we just update the already existing entry. If not, we add a new one.
-            $sql = Invoke-SqliteQuery -Query "SELECT * FROM SERVERS" -DataSource $Database
-            $tempg = $sql._id
-            if ( $sql.GUID -eq $data.GUID )
+            $sql = Invoke-SqliteQuery -Query "SELECT * FROM SERVERS WHERE Hostname = '$Server'" -DataSource $Database
+            if ( $sql.GUID -eq $data.GUID ) #$sql.GUID -eq $data.GUID
             {
                 Write-Output "Detected already existing server, updating with new info. $Server"
 
