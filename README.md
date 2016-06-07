@@ -4,6 +4,10 @@
 
 PowerShell script that adds server info to an SQLite database.
 
+Also has a web-gui to view data from the database.
+
+This is a long way from finished.
+
 ## Usage
 
 ```PowerShell
