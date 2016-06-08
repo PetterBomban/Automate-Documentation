@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-
 <html>
 
   <head>
     <title>Documentation</title>
-    <link rel="stylesheet" href="http://localhost/main.css">
+    <link rel="stylesheet" href="./main.css">
   </head>
 
   <body>
@@ -25,11 +24,9 @@
         $('#table').toggle();
       });
     });
-  </script>
 
-  <script type="text/javascript">
     $("document").ready(function() {
-      $('#table').load('loadServers.php');
+      $('#table').load('./loadServers.php');
     });
   </script>
 

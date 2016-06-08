@@ -1,6 +1,6 @@
 <?php
 
-  include_once "dbconn.php";
+  include_once "./dbconn.php";
 
   // List of columns
   function createTableHeaders($dataArray)
@@ -23,7 +23,14 @@
       echo "<tr id=$table>\r\n";
       foreach ($dataArray as $data)
       {
-        echo "<td>". $row[$data] . "</td> \r\n";
+        if ($data == "Hostname")
+        {
+          echo "<td><a href=./loadServer.php?server=" . $row[$data] . "&table=" . $table . ">". $row[$data] . "</a></td> \r\n";
+        }
+        else
+        {
+          echo "<td>". $row[$data] . "</td> \r\n";
+        }
       }
       echo "</tr>\r\n";
     }

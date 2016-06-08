@@ -28,6 +28,25 @@ tr#link {
   background-color: #c5e0b3; 
 }
 
+a:link {
+    color: black;
+}
+
+/* visited link */
+a:visited {
+    color: black;
+}
+
+/* mouse over link */
+a:hover {
+    color: black;
+}
+
+/* selected link */
+a:active {
+    color: black;
+}
+
 div#table {
   margin: 2px;
   margin-bottom: 10px;

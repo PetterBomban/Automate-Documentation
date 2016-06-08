@@ -46,7 +46,7 @@ Function Get-ServerData
     ## Create the database if it doesn't exist already
     if (!( Test-Path -Path $Database ))
     {
-        $q = "CREATE TABLE $DBTable (_id INTEGER PRIMARY KEY autoincrement, GUID TEXT, Hostname TEXT, IPAddress TEXT, OS TEXT, Date TEXT, Comments TEXT)"
+        $q = "CREATE TABLE $DBTable (_id INTEGER PRIMARY KEY autoincrement, GUID TEXT, Hostname TEXT, IPAddress TEXT, OS TEXT, Installed TEXT, Date TEXT, Comments TEXT)"
         Invoke-SqliteQuery -DataSource $Database -Query $q
 
         Write-Output "Database $Database created."
@@ -59,7 +59,7 @@ Function Get-ServerData
             IPAddress = (Get-NetIPConfiguration).IPv4Address.IPAddress 
             OS = ((Get-WmiObject Win32_OperatingSystem).Caption)
             Date = (Get-date -Format d)
-            #Installed = (Get-WindowsFeature | Where {$_.Installed -eq $true})
+            Installed = ((Get-WindowsFeature | Where {$_.Installed -eq $true})).Name | Out-String
             #Services = (Get-Service | Where {$_.Status -eq "Running"})
         }
         New-Object psobject -Property $property
@@ -69,7 +69,7 @@ Function Get-ServerData
     {
         Write-Output "Gathering data from $Server."
         ## Run $GatherData on the server, passes the output to $data
-        Invoke-Command -ComputerName $Server -Credential $Credentials -ScriptBlock $GatherData -OutVariable data | Out-Null
+        Invoke-Command -ComputerName $Server -Credential $Credentials -ScriptBlock $GatherData -OutVariable data #| Out-Null
 
         try 
         {
@@ -93,7 +93,7 @@ Function Get-ServerData
             {
                 Write-Output "Detected already existing server, updating with new info. $Server."
 
-                $Query = "UPDATE $DBTable SET GUID=@GUID, Hostname=@Hostname, IPAddress=@IPAddress, OS=@OS, Date=@Date WHERE _id=@id"
+                $Query = "UPDATE $DBTable SET GUID=@GUID, Hostname=@Hostname, IPAddress=@IPAddress, OS=@OS, Installed=@Installed, Date=@Date WHERE _id=@id"
                 Invoke-SqliteQuery -DataSource $Database -Query $Query -SqlParameters @{
                     GUID = $data.GUID
                     Hostname = $data.Hostname
@@ -101,6 +101,7 @@ Function Get-ServerData
                     OS = $data.OS
                     id = $sql._id
                     Date = $data.Date
+                    Installed = $data.Installed
                 } -ErrorAction Stop
 
                 Write-Output "$Server -- Updated entry."
@@ -109,13 +110,14 @@ Function Get-ServerData
             {
                 Write-Output "Creating new entry for $Server."
 
-                $Query = "INSERT INTO $DBTable (GUID, Hostname, IPAddress, OS, Date) VALUES (@GUID, @Hostname, @IPAddress, @OS, @Date)"
+                $Query = "INSERT INTO $DBTable (GUID, Hostname, IPAddress, OS, Installed, Date) VALUES (@GUID, @Hostname, @IPAddress, @OS, @Installed, @Date)"
                 Invoke-SqliteQuery -DataSource $Database -Query $Query -SqlParameters @{
                     GUID = $data.GUID
                     Hostname = $data.Hostname
                     IPAddress = $data.IPAddress
                     OS = $data.OS
                     Date = $data.Date
+                    Installed = $data.Installed
                 } -ErrorAction Stop
 
                 Write-Output "$Server -- Created entry."
@@ -136,6 +138,6 @@ Function Get-ServerData
 
 }
 
-$cred = Get-Credential -Credential "PETTERR\SuperAdmin"
+$credential = Get-Credential
 
-Get-ServerData -Database "C:\Users\SuperAdmin\SERVERS.SQLite" -DBTable "SERVERS" -Servers "MgmrSrv", "DC001" -Credentials $cred
+Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS" -Servers "MgmrSrv", "DC001" -Credentials $credential #-AllowDuplicates

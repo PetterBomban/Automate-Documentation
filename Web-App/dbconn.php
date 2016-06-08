@@ -3,7 +3,8 @@
    {
       function __construct()
       {
-         $this->open('SERVERS.SQLite');
+         //TODO
+         $this->open('./SERVERS.SQLite');
       }
    }
    $db = new MyDB();
