@@ -27,7 +27,7 @@
   //The database, the table in the database and the list of columns
   function loadFromDatabase($database, $table, $dataArray)
   {
-    $sql = "SELECT * FROM ${table} WHERE Hostname = '{$_GET['server']}'";
+    $sql = "SELECT * FROM ${table} WHERE _id = '{$_GET['server']}'";
     $query = $database->query($sql);
     
     while($row = $query->fetchArray(SQLITE3_ASSOC)){
@@ -54,7 +54,7 @@
     <table>
       <?php
         // Headers and values to load from db
-        $serversList = array("Hostname", "IPAddress", "OS", "Installed", "Date");
+        $serversList = array("_id", "Hostname", "IPAddress", "OS", "Installed", "Date");
 
         // Create table
         createTableHeaders($serversList);

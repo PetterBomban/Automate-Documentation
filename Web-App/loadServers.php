@@ -25,7 +25,7 @@
       {
         if ($data == "Hostname")
         {
-          echo "<td><a href=./loadServer.php?server=" . $row[$data] . "&table=" . $table . ">". $row[$data] . "</a></td> \r\n";
+          echo "<td><a href=./loadServer.php?server=" . $row["_id"] . "&table=" . $table . ">". $row[$data] . "</a></td> \r\n";
         }
         else
         {
