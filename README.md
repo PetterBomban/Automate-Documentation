@@ -1,6 +1,6 @@
 # Automate-Documentation
 
-![alt tag](https://raw.githubusercontent.com/PetterBomban/Automate-Documentation/master/img/preview.png)
+![alt tag](https://raw.githubusercontent.com/PetterBomban/Automate-Documentation/master/img/preview2.png)
 
 PowerShell script that adds server info to an SQLite database.
 
