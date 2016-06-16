@@ -44,7 +44,7 @@
 
       // Create table
       createTableHeaders($serversList);
-      loadFromDatabase($db, "link", $serversList);
+      //loadFromDatabase($db, "link", $serversList);
       loadFromDatabase($db, "servers", $serversList);
     ?>
   </table>

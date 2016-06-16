@@ -15,7 +15,8 @@ Function Get-ServerData
     (
         [Parameter(
             Mandatory = $true,
-            ValueFromPipeline = $true
+            ValueFromPipeline = $true,
+            ParameterSetName = "ServerSet1"
         )]
         [string[]]$Servers,
 
@@ -35,13 +36,48 @@ Function Get-ServerData
         $Credentials,
 
         [Parameter()]
-        [switch]$AllowDuplicates
+        [switch]$AllowDuplicates,
+
+        [Parameter(
+            Mandatory = $true,
+            ParameterSetName = "ServerSet2"
+        )]
+        [switch]$LoadFromVMWare,
+        [Parameter(
+            Mandatory = $true,
+            ParameterSetName = "ServerSet2"
+        )]
+        $VIServer
     )
 
     $ErrorActionPreference = "Stop"
 
     ## Modules needed
     Import-Module ActiveDirectory, PSSQLite
+
+    ## If we set the function to load servers from VMWare
+    if($LoadFromVMWare -eq $true)
+    {
+        Import-Module Vmware.VimAutomation.Core
+        Connect-VIServer $VIServer -Credential $Credentials -Force
+        $LoadServers = (Get-VM).Guest.HostName
+
+        ## Strip the hostname of the domain name suffix and add the servers to the $Servers variable.
+        $LoadServers | % {
+            if (($_ -eq $null) -or ($_ -eq "") -or ($_ -eq $false))
+            {
+                return
+            }
+            else
+            {
+                $Srv = $_.split(".")[0]
+                $Servers += $Srv
+            }
+        }
+        Write "Detected:"
+        Write $Servers
+        Disconnect-VIServer $VIServer -Confirm:$false -Force
+    }
 
     ## Create the database if it doesn't exist already
     if (!( Test-Path -Path $Database ))
@@ -56,7 +92,7 @@ Function Get-ServerData
     $GatherData = {
         $property = [ordered]@{
             Hostname = (hostname)
-            IPAddress = (Get-NetIPConfiguration).IPv4Address.IPAddress 
+            IPAddress = (Get-NetIPConfiguration).IPv4Address.IPAddress | Out-String
             OS = ((Get-WmiObject Win32_OperatingSystem).Caption)
             Date = (Get-date -Format d)
             Installed = ((Get-WindowsFeature | Where {$_.Installed -eq $true})).Name | Out-String
@@ -69,7 +105,7 @@ Function Get-ServerData
     {
         Write-Output "Gathering data from $Server."
         ## Run $GatherData on the server, passes the output to $data
-        Invoke-Command -ComputerName $Server -Credential $Credentials -ScriptBlock $GatherData -OutVariable data #| Out-Null
+        Invoke-Command -ComputerName $Server -Credential $Credentials -ScriptBlock $GatherData -OutVariable data | Out-Null
 
         try 
         {
@@ -138,6 +174,16 @@ Function Get-ServerData
 
 }
 
-$credential = Get-Credential
+$File = "C:\Users\Veeam\Desktop\cred.txt"
+## Create credentials
+## Comment the line right below this one after first use
+#(Get-Credential).Password | ConvertFrom-SecureString | Out-File $File -force
 
-Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS" -Servers "MgmrSrv", "DC001" -Credentials $credential #-AllowDuplicates
+## Load password from file.
+$password = Get-Content $File | ConvertTo-SecureString 
+$credential = New-Object System.Management.Automation.PsCredential("ikt-fag\Veeam",$password)
+
+## Use this if you run this script manually
+#$credential = Get-Credential
+
+Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS"-Credentials $credential -VIServer "192.168.0.9" -LoadFromVMWare #-AllowDuplicates
