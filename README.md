@@ -27,5 +27,6 @@ You can also use the `-AllowDuplicates` switch if you want to allow duplicate en
 * Active Directory PowerShell Module
 * [PSSQLite](https://github.com/RamblingCookieMonster/PSSQLite)
 * Web-server that supports PHP and SQLite3
+* PowerCLI (If you plan to load servers from VMWare)
 
 
