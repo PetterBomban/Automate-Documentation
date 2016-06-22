@@ -1,14 +1,4 @@
-﻿<#
-.Synopsis
-   Gather data about one or more servers
-.DESCRIPTION
-   Gather data about one or more servers. In development.
-.EXAMPLE
-   "Neo", "Mouse" | Get-ServerData
-.EXAMPLE
-   Get-ServerData -servers "Neo", "Mouse"
-#>
-Function Get-ServerData 
+﻿Function Get-ServerData 
 {
     [CmdletBinding()]
     param 
@@ -19,6 +9,12 @@ Function Get-ServerData
             ParameterSetName = "ServerSet1"
         )]
         [string[]]$Servers,
+
+        [Parameter(
+            Mandatory = $true,
+            ParameterSetName = "ServerSet2"
+        )]
+        $VIServer,
 
         [Parameter(
             Mandatory = $true
@@ -36,13 +32,7 @@ Function Get-ServerData
         $Credentials,
 
         [Parameter()]
-        [switch]$AllowDuplicates,
-
-        [Parameter(
-            Mandatory = $true,
-            ParameterSetName = "ServerSet2"
-        )]
-        $VIServer
+        [switch]$AllowDuplicates
     )
 
     $ErrorActionPreference = "Stop"
@@ -72,8 +62,8 @@ Function Get-ServerData
                 $Servers += $Srv
             }
         }
-        Write "Detected:"
-        Write $Servers
+        Write-Output "Detected:"
+        Write-Output $Servers
         Disconnect-VIServer $VIServer -Confirm:$false -Force
     }
 
@@ -114,7 +104,7 @@ Function Get-ServerData
         catch 
         {
             ## TODO
-            Write-Error $Error[0]
+            throw "COULD NOT ADD GUID TO data OBJECT. " + $_.Exception.Message
         }
 
         ## Begin adding the server to the database
@@ -160,7 +150,7 @@ Function Get-ServerData
         catch 
         {
             ## TODO
-            Write-Error $Error[0]
+            throw "COULD NOT PERFORM SQL ACTIONS. " + $_.Exception.Message
         }
 
     }
@@ -172,16 +162,24 @@ Function Get-ServerData
 
 }
 
-$File = "C:\Users\Veeam\Desktop\cred.txt"
-## Create credentials
-## Comment the line right below this one after first use
-#(Get-Credential).Password | ConvertFrom-SecureString | Out-File $File -force
+## If you want to run this script automatically, you might need to store your
+## credentials in a file. Uncomment the below to do this.
+<#
 
-## Load password from file.
-$password = Get-Content $File | ConvertTo-SecureString 
-$credential = New-Object System.Management.Automation.PsCredential("ikt-fag\Veeam",$password)
+    ## Where to store the credentials
+    $File = "C:\Users\Veeam\Desktop\cred.txt"
 
-## Use this if you run this script manually
-#$credential = Get-Credential
+    ## Create credentials
+    ## Comment the line right below this one after first use
+    (Get-Credential).Password | ConvertFrom-SecureString | Out-File $File -force
 
-Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS"-Credentials $credential -VIServer "192.168.0.9" #-AllowDuplicates
+    ## Load password from file. Remember to change the "DOMAIN\USERNAME_HERE"-part.
+    $password = Get-Content $File | ConvertTo-SecureString 
+    $credential = New-Object System.Management.Automation.PsCredential("DOMAIN\USERNAME_HERE",$password)
+
+    ## Use this if you want to run the script manually every time.
+    #$credential = Get-Credential
+
+#>
+
+Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS" -VIServer "192.168.0.9" -Credentials $credential
