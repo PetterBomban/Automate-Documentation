@@ -42,11 +42,6 @@ Function Get-ServerData
             Mandatory = $true,
             ParameterSetName = "ServerSet2"
         )]
-        [switch]$LoadFromVMWare,
-        [Parameter(
-            Mandatory = $true,
-            ParameterSetName = "ServerSet2"
-        )]
         $VIServer
     )
 
@@ -56,21 +51,24 @@ Function Get-ServerData
     Import-Module ActiveDirectory, PSSQLite
 
     ## If we set the function to load servers from VMWare
-    if($LoadFromVMWare -eq $true)
+    if($VIServer -ne "")
     {
         Import-Module Vmware.VimAutomation.Core
         Connect-VIServer $VIServer -Credential $Credentials -Force
-        $LoadServers = (Get-VM).Guest.HostName
+        $LoadServers = Get-VM
 
         ## Strip the hostname of the domain name suffix and add the servers to the $Servers variable.
         $LoadServers | % {
-            if (($_ -eq $null) -or ($_ -eq "") -or ($_ -eq $false))
+
+            $ServerHostname = $_.Guest.HostName
+
+            if (($ServerHostname -eq $null) -or ($ServerHostname -eq "") -or ($ServerHostname -eq $false))
             {
                 return
             }
             else
             {
-                $Srv = $_.split(".")[0]
+                $Srv = $ServerHostname.split(".")[0]
                 $Servers += $Srv
             }
         }
@@ -186,4 +184,4 @@ $credential = New-Object System.Management.Automation.PsCredential("ikt-fag\Veea
 ## Use this if you run this script manually
 #$credential = Get-Credential
 
-Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS"-Credentials $credential -VIServer "192.168.0.9" -LoadFromVMWare #-AllowDuplicates
+Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS"-Credentials $credential -VIServer "192.168.0.9" #-AllowDuplicates

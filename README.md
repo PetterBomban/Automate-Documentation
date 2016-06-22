@@ -17,7 +17,7 @@ Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVE
 ```
 **Loading servers from VMWare (With PowerCLI)**
 ```PowerShell
-Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS"-Credentials (Get-Credential) -VIServer "192.168.0.9" -LoadFromVMWare
+Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS"-Credentials (Get-Credential) -VIServer "192.168.0.9"
 ```
 
 You can also use the `-AllowDuplicates` switch if you want to allow duplicate entries.
