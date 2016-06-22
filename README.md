@@ -10,14 +10,13 @@ This is a long way from finished.
 
 ## Usage
 
-
 **Loading servers from string**
 ```PowerShell
-Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS" -Servers "MgmrSrv", "DC001" -Credentials (Get-Credential) - 
+Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS" -Servers "MgmrSrv", "DC001" -Credentials (Get-Credential)
 ```
 **Loading servers from VMWare (With PowerCLI)**
 ```PowerShell
-Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS"-Credentials (Get-Credential) -VIServer "192.168.0.9"
+Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS" -Credentials (Get-Credential) -VIServer "192.168.0.9"
 ```
 
 You can also use the `-AllowDuplicates` switch if you want to allow duplicate entries.
