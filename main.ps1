@@ -50,10 +50,21 @@
         ## Strip the hostname of the domain name suffix and add the servers to the $Servers variable.
         $LoadServers | % {
 
+            $vm = $_
             $ServerHostname = $_.Guest.HostName
 
             if (($ServerHostname -eq $null) -or ($ServerHostname -eq "") -or ($ServerHostname -eq $false))
             {
+                return
+            }
+            elseif (($vm.PowerState -eq "PoweredOff") -or ($vm.PowerState -eq "Suspended"))
+            {
+                Write-Output "$ServerHostname -- is powered off or suspended, going to next server."
+                return
+            }
+            elseif ($vm.Name -notlike "*WIN*")
+            {
+                Write-Output "$ServerHostname -- only Windows-servers are supported, skipping."
                 return
             }
             else
@@ -62,8 +73,8 @@
                 $Servers += $Srv
             }
         }
-        Write-Output "Detected:"
-        Write-Output $Servers
+        Write "Detected:"
+        Write $Servers
         Disconnect-VIServer $VIServer -Confirm:$false -Force
     }
 
@@ -158,6 +169,8 @@
     ## DEBUG
     Invoke-SqliteQuery -DataSource $Database -Query "SELECT * FROM SERVERS"
 
+    $Servers = $Null
+
     #Invoke-SqliteQuery -DataSource $Database -Query "DELETE FROM SERVERS"
 
 }
@@ -182,4 +195,4 @@
 
 #>
 
-Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS" -VIServer "192.168.0.9" -Credentials $credential
+Get-ServerData -Database "C:\inetpub\wwwroot\Web\SERVERS.SQLite" -DBTable "SERVERS" -VIServer "192.168.0.9" -Credentials (Get-Credential)
